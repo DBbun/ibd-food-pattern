@@ -23,7 +23,9 @@ function healthLine(h) {
   if (h.conditions?.length) bits.push(`Also: ${h.conditions.map((c) => CONFIG.healthConditions[c] || c).join(', ')}`);
   const ostomy = h.conditions?.includes('ostomy')
     ? '<p class="small">Ostomy or colectomy: stool-based items may not reflect disease activity the same way. Read these results with your care team.</p>' : '';
-  return (bits.length ? `<p class="meta">${esc(bits.join(' · '))}</p>` : '') + ostomy;
+  const stricture = h.conditions?.includes('stricture')
+    ? '<p class="small">Known stricture: this diet was agreed with the care team before starting. Raw vegetables and high-fibre foods need particular care.</p>' : '';
+  return (bits.length ? `<p class="meta">${esc(bits.join(' · '))}</p>` : '') + ostomy + stricture;
 }
 
 // Joint pain, eye, skin and mouth symptoms reported in the weekly check. Shown for both conditions.
@@ -34,7 +36,7 @@ function otherSymptoms(state) {
   for (const w of weeks) for (const k of w.items) counts[k] = (counts[k] || 0) + 1;
   const rows = Object.entries(counts).sort((a, b) => b[1] - a[1])
     .map(([k, n]) => `<li>${esc(CONFIG.hbiComplications[k] || k)}: reported in ${n} ${n === 1 ? 'week' : 'weeks'}</li>`);
-  return `<h3>Other symptoms reported</h3><ul>${rows.join('')}</ul>
+  return `<h2>Other symptoms reported</h2><ul>${rows.join('')}</ul>
     <p class="small muted">From the weekly check${usesHBI(state.settings.condition) ? '' : '. These are not part of the colitis score'}.</p>`;
 }
 
@@ -44,7 +46,7 @@ function weightLine(state) {
   const unit = state.settings.weightUnit || 'kg';
   const first = w[0], last = w[w.length - 1];
   const pctChange = w.length > 1 ? ` (${last.value >= first.value ? '+' : ''}${fmt(((last.value - first.value) / first.value) * 100)}%)` : '';
-  return `<h3>Weight</h3><p>${esc(formatShort(first.date))}: ${fmt(first.value)} ${esc(unit)}${w.length > 1 ? ` · ${esc(formatShort(last.date))}: ${fmt(last.value)} ${esc(unit)}${pctChange}` : ''}</p>`;
+  return `<h2>Weight</h2><p>${esc(formatShort(first.date))}: ${fmt(first.value)} ${esc(unit)}${w.length > 1 ? ` · ${esc(formatShort(last.date))}: ${fmt(last.value)} ${esc(unit)}${pctChange}` : ''}</p>`;
 }
 
 export function renderSummary(state, todayISO) {
@@ -81,13 +83,13 @@ export function renderSummary(state, todayISO) {
     headline = '<p class="headline">Comparisons appear once the baseline week and maintenance have enough logged days.</p>';
   }
 
-  const labs = s.labs.length ? `<h3>Lab results</h3><ul class="lab-list">${s.labs.map((l) => `<li>${esc(formatShort(l.date))}: ${esc(labName(l))} <strong>${esc(l.value)}</strong> ${esc(labUnit(l))}</li>`).join('')}</ul>` : '';
+  const labs = s.labs.length ? `<h2>Lab results</h2><ul class="lab-list">${s.labs.map((l) => `<li>${esc(formatShort(l.date))}: ${esc(labName(l))} <strong>${esc(l.value)}</strong> ${esc(labUnit(l))}</li>`).join('')}</ul>` : '';
   const exps = (state.experiences || []);
   const expItem = (e) => `<li><span><strong>${esc(e.food)}</strong>: ${esc(CONFIG.experiencePatterns[e.pattern] || '')}${e.since ? ` (${esc(e.since)})` : ''}${e.note ? `<span class="small muted block">${esc(e.note)}</span>` : ''}</span></li>`;
   const expGroups = Object.values(CONFIG.experienceGroups)
     .map((g) => ({ label: g.label, items: exps.filter((e) => g.patterns.includes(e.pattern)) }))
     .filter((g) => g.items.length);
-  const experiences = exps.length ? `<h3>My own observations</h3>
+  const experiences = exps.length ? `<h2>My own observations</h2>
     <p class="small muted">Patterns I've noticed over time, in my own words (not measured by the app).</p>
     ${expGroups.map((g) => `<p class="exp-group">${esc(g.label)}</p><ul class="exp-list">${g.items.map(expItem).join('')}</ul>`).join('')}` : '';
 
@@ -101,7 +103,7 @@ export function renderSummary(state, todayISO) {
     inProgress: () => 'Test in progress.',
     skipped: () => 'Not tested (marked "No").',
   };
-  const tests = started.length ? `<h3>Food reintroduction</h3>
+  const tests = started.length ? `<h2>Food reintroduction</h2>
     <p class="small muted">Beyond the published trial. Each food is tested for ${CONFIG.phases[3].daysPerFood} days and compared with your maintenance-phase average.</p>
     <ul class="tests">${started.map((t) => `<li class="test test-${t.status}">
       <span class="test-food-name">${esc(t.food.label)}</span>

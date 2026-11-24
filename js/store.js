@@ -21,9 +21,27 @@ export function load() {
   }
 }
 
+// Browser storage is not guaranteed to last: a browser may evict it when the device runs low on
+// space, and iOS Safari clears script-writable storage for sites left unvisited for a long stretch.
+// Asking for persistent storage opts this app out of that, so a 12-week trial is not lost halfway.
+// Best effort only: browsers without the Storage API, or that refuse, simply carry on unchanged.
+let persistenceAsked = false;
+export function requestPersistence() {
+  if (persistenceAsked) return;
+  persistenceAsked = true;
+  try {
+    const st = navigator.storage;
+    if (!st || typeof st.persist !== 'function') return;
+    Promise.resolve(typeof st.persisted === 'function' ? st.persisted() : false)
+      .then((already) => (already ? null : st.persist()))
+      .catch(() => { /* refused or unavailable */ });
+  } catch { /* Storage API unavailable */ }
+}
+
 export function save(state) {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    requestPersistence();
     return true;
   } catch {
     return false;

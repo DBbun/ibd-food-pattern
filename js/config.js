@@ -8,6 +8,9 @@ export const CONFIG = {
   // Where feedback goes if the person chooses to send it. Shown as text as well as used in a
   // mail draft, because many desktop browsers have no mail handler and a mailto: link does nothing.
   contactEmail: 'uri.kartoun@dbbun.com',
+  // Anonymous feedback form. The only route that works for someone who arrives with no
+  // mail app set up and no other way to reach me. Opens in the browser, outside this app.
+  feedbackFormUrl: 'https://forms.gle/EKyAUPpLdWmzqHFh9',
 
   // Konijeti 2017: 6-week staged elimination, then 5-week maintenance. Baseline week and reintroduction are
   // additions (baseline gives a real "before"; reintroduction goes beyond the trial and is labeled as such).
@@ -114,6 +117,7 @@ export const CONFIG = {
   healthConditions: {
     celiac: 'Celiac disease',
     ostomy: 'Ostomy, or colon removed (colectomy)',
+    stricture: 'A known stricture (narrowing)',
     diabetes: 'Diabetes',
   },
   treatments: {

@@ -255,7 +255,17 @@ const actions = {
     const i = a.indexOf(v);
     if (i >= 0) a.splice(i, 1); else a.push(v);
   },
-  'weight-unit': (v) => { state.settings.weightUnit = v; commit(); },
+  'weight-unit': (v) => {
+    // Converting the stored values keeps the series in one unit. Without this the weight series
+    // silently becomes mixed-unit and pauseSignals reports a huge false loss (first vs latest).
+    const from = state.settings.weightUnit || 'kg';
+    if (from !== v && (state.weights || []).length) {
+      const factor = v === 'lb' ? 2.2046226218 : 1 / 2.2046226218;
+      state.weights = state.weights.map((w) => ({ ...w, value: Math.round(w.value * factor * 10) / 10 }));
+    }
+    state.settings.weightUnit = v;
+    commit();
+  },
   'weight-save': () => {
     const value = Number(ctx.weightDraft);
     if (!ctx.weightDraft || Number.isNaN(value) || value <= 0) { toast('Enter your weight first.'); return; }

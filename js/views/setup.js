@@ -19,7 +19,7 @@ export function ownTests(s) {
 
 export function renderSetup(ctx) {
   const s = ctx.setup;
-  const steps = ['Condition', 'Details', 'Your health', 'Safety', 'Your plan'];
+  const steps = ['Condition', 'Your health', 'Details', 'Safety', 'Your plan'];
   const h = s.health || { conditions: [], treatments: [], dxYear: '' };
   const has = (c) => h.conditions.includes(c);
   const progress = `<ol class="steps" aria-label="Setup steps">${steps.map((label, i) =>
@@ -54,12 +54,37 @@ export function renderSetup(ctx) {
       </div>
       <p class="small muted center">Just looking? <button type="button" class="linklike" data-action="demo-load" data-value="CD">Explore with simulated demo data</button></p>`;
   } else if (s.step === 1) {
+    const chip = (action, key, label, on) =>
+      `<button type="button" class="chip${on ? ' is-on' : ''}" aria-pressed="${on}" data-action="${action}" data-value="${key}">${esc(label)}</button>`;
+    body = `
+      <h1>Your health</h1>
+      <p class="lead">These answers change your plan and your safety tips. They stay on this phone.</p>
+      <fieldset class="field">
+        <legend>Do any of these apply to you?</legend>
+        <p class="hint">Tap all that apply, or none.</p>
+        <div class="chips">${Object.entries(CONFIG.healthConditions).map(([k, label]) => chip('setup-health', k, label, has(k))).join('')}</div>
+      </fieldset>
+      <label class="field block">
+        <span class="legend">Year you were diagnosed <span class="muted">(optional)</span></span>
+        <input type="number" inputmode="numeric" min="1940" max="2100" data-input="setup-dxyear" value="${esc(h.dxYear || '')}" placeholder="e.g. 2015">
+      </label>
+      <fieldset class="field">
+        <legend>Current IBD treatment <span class="muted">(optional)</span></legend>
+        <p class="hint">Tap all that apply. It is shown on your summary for your care team.</p>
+        <div class="chips">${Object.entries(CONFIG.treatments).map(([k, label]) => chip('setup-tx', k, label, h.treatments.includes(k))).join('')}</div>
+      </fieldset>
+      <div class="actions">
+        <button type="button" class="btn" data-action="setup-back">Back</button>
+        <button type="button" class="btn primary" data-action="setup-next">Continue</button>
+      </div>`;
+  } else if (s.step === 2) {
     body = `
       <h1>A few details</h1>
       ${s.condition === 'UC' ? `
         <fieldset class="field">
           <legend>How many bowel movements a day are normal for you when you're well?</legend>
           <p class="hint">Used to score stool frequency: the partial Mayo score counts stools above your normal.</p>
+          ${has('ostomy') ? `<p class="hint">You told us you have an ostomy or colectomy, so give your usual number of emptyings. Stool-based items may not reflect your disease activity the same way, and your results say so.</p>` : ''}
           <div class="stepper">
             <button type="button" class="btn round" data-action="setup-stools" data-delta="-1" aria-label="Fewer stools per day">−</button>
             <output class="stepper-value" aria-live="polite">${s.normalStools}</output>
@@ -84,30 +109,6 @@ export function renderSetup(ctx) {
         <button type="button" class="btn" data-action="setup-back">Back</button>
         <button type="button" class="btn primary" data-action="setup-next">Continue</button>
       </div>`;
-  } else if (s.step === 2) {
-    const chip = (action, key, label, on) =>
-      `<button type="button" class="chip${on ? ' is-on' : ''}" aria-pressed="${on}" data-action="${action}" data-value="${key}">${esc(label)}</button>`;
-    body = `
-      <h1>Your health</h1>
-      <p class="lead">These answers change your plan and your safety tips. They stay on this phone.</p>
-      <fieldset class="field">
-        <legend>Do any of these apply to you?</legend>
-        <p class="hint">Tap all that apply, or none.</p>
-        <div class="chips">${Object.entries(CONFIG.healthConditions).map(([k, label]) => chip('setup-health', k, label, has(k))).join('')}</div>
-      </fieldset>
-      <label class="field block">
-        <span class="legend">Year you were diagnosed <span class="muted">(optional)</span></span>
-        <input type="number" inputmode="numeric" min="1940" max="2100" data-input="setup-dxyear" value="${esc(h.dxYear || '')}" placeholder="e.g. 2015">
-      </label>
-      <fieldset class="field">
-        <legend>Current IBD treatment <span class="muted">(optional)</span></legend>
-        <p class="hint">Tap all that apply. It is shown on your summary for your care team.</p>
-        <div class="chips">${Object.entries(CONFIG.treatments).map(([k, label]) => chip('setup-tx', k, label, h.treatments.includes(k))).join('')}</div>
-      </fieldset>
-      <div class="actions">
-        <button type="button" class="btn" data-action="setup-back">Back</button>
-        <button type="button" class="btn primary" data-action="setup-next">Continue</button>
-      </div>`;
   } else if (s.step === 3) {
     body = `
       <h1>Before you start</h1>
@@ -119,7 +120,9 @@ export function renderSetup(ctx) {
         ${has('diabetes') ? '<li><strong>Diabetes:</strong> talk to your care team before you start. Cutting grains and sugar can change your blood sugar.</li>' : ''}
         ${has('ostomy') ? '<li><strong>Ostomy or colectomy:</strong> stool counts may not show your disease activity the same way. Read your results with your care team.</li>' : ''}
         <li><strong>Don't change your medications</strong> without your care team. This is done alongside your usual treatment.</li>
-        <li><strong>If you have a known stricture</strong> (narrowing), talk to your GI team first. In the study, one person with a stricture had a blockage after eating a lot of raw vegetables.</li>
+        ${has('stricture')
+          ? '<li><strong>You told us you have a stricture (narrowing).</strong> Agree this plan with your GI team before you start, and ask them specifically about raw vegetables and high-fiber foods. In the study this app is based on, one person with a stricture needed hospital treatment for a blockage after eating a lot of raw vegetables.</li>'
+          : '<li><strong>If you have a known stricture</strong> (narrowing), talk to your GI team first. In the study, one person with a stricture had a blockage after eating a lot of raw vegetables.</li>'}
         <li><strong>Taking steroids now or recently, or told your bones are thin?</strong> Ask your care team about calcium and vitamin D before dairy comes out in week 2.</li>
         <li><strong>If your diet is already limited, or you've lost weight,</strong> talk to a dietitian before starting.</li>
         <li><strong>Pregnant, planning a pregnancy, or breastfeeding?</strong> Talk to your care team and a dietitian before you start.</li>

@@ -56,11 +56,16 @@ export function renderAbout(state, ctx = {}) {
 
     <section class="panel feedback">
       <h2 class="h3">Help improve this app</h2>
-      <p>What's missing, confusing, or not right for you? What you write is saved on this phone. Nothing is sent unless you choose to send it.</p>
+      <p>What's missing, confusing, or not right for you?</p>
+      <div class="actions left">
+        <a class="btn primary" href="${esc(CONFIG.feedbackFormUrl)}" target="_blank" rel="noopener">Answer a few short questions</a>
+      </div>
+      <p class="small muted">Anonymous, a few minutes, and you need no email app. It opens a Google form in your browser, outside this app; nothing from your phone is sent with it.</p>
+      <p>Or write a note here instead. What you write is saved on this phone. Nothing is sent unless you choose to send it.</p>
       <textarea rows="3" data-input="feedback" placeholder="Your feedback" aria-label="Your feedback">${esc(ctx.feedbackDraft || '')}</textarea>
       <div class="actions left">
         <button type="button" class="btn" data-action="feedback-save">Save</button>
-        <button type="button" class="btn primary" data-action="feedback-email">Email it to me</button>
+        <button type="button" class="btn" data-action="feedback-email">Email it to me</button>
         <button type="button" class="btn" data-action="feedback-share">Share another way</button>
       </div>
       <p class="small muted">Email opens a draft to <a href="mailto:${esc(CONFIG.contactEmail)}">${esc(CONFIG.contactEmail)}</a> with your words in it; you still decide whether to send. Only what you typed goes in — none of your logged days are attached. If your browser has no mail app, copy that address.</p>

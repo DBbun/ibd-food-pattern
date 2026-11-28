@@ -378,7 +378,8 @@ export function renderToday(state, ctx, todayISO) {
     ${experiencesCard(state, ctx)}
     <div class="save-bar">
       <div class="save-score">${score ? `${esc(indexName(cond))}: <strong>${score.score}</strong>` : '<span class="muted">Answer the symptom questions to see your score</span>'}</div>
-      <button type="button" class="btn primary" data-action="save-entry">${saved ? 'Update' : 'Save'}</button>
+      <button type="button" class="btn primary" data-action="save-entry"
+        aria-label="${saved ? 'Update this day' : 'Save this day'}'s log">${saved ? 'Update' : 'Save'}</button>
     </div>`;
 }
 

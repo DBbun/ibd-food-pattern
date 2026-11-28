@@ -28,6 +28,9 @@
   <a class="skip" href="#main">Skip to content</a>
   <div id="app"><p style="padding:24px">Loading…</p></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <!-- Spoken, never shown. Outside #app for the same reason the toast is: every view is rebuilt by
+       render(), and a live region that is destroyed and recreated does not announce. -->
+  <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
   <noscript><p style="padding:24px">This app needs JavaScript. Nothing you enter leaves this device.</p></noscript>
   <script type="module" src="js/main.js"></script>
 </body>

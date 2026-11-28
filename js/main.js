@@ -82,7 +82,7 @@ function render() {
 function header() {
   return `<header class="topbar no-print"><div class="container">
     <span class="brand">${esc(CONFIG.appName)}</span>
-    <span class="private-badge" title="Stored only on this phone">🔒 On this phone only</span>
+    <span class="private-badge" title="Stored only on this phone"><span aria-hidden="true">🔒</span> On this phone only</span>
   </div></header>`;
 }
 
@@ -107,6 +107,43 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('is-on'), 2600);
 }
 
+// Speak something that is only shown as a number on screen. A stepper's whole output is its value,
+// and the `<output aria-live>` holding it sits inside #app, which render() replaces on every tap -
+// so the element carrying the announcement is destroyed and rebuilt rather than changed, and
+// nothing is said. Tapping + moved the stool count from "?" to 1 in silence, on a value that feeds
+// the partial Mayo score. #announce lives outside #app and survives, like the toast.
+//
+// `msg` may be a function, read after render() has rebuilt the view, for a value that is easier to
+// take from the finished DOM than to recompute here. The one-tick delay also makes a repeated
+// string register as a change instead of being coalesced away.
+function announce(msg) {
+  const el = document.getElementById('announce');
+  if (!el) return;
+  setTimeout(() => { el.textContent = typeof msg === 'function' ? msg() : msg; }, 60);
+}
+
+// The stepper's visible question, without the "not answered" marker that disappears once it is.
+function stepperLabel(el) {
+  const legend = el.closest('fieldset')?.querySelector('legend');
+  if (!legend) return 'Value';
+  const marker = legend.querySelector('.unanswered');
+  const text = marker ? legend.textContent.replace(marker.textContent, '') : legend.textContent;
+  return text.replace(/\s+/g, ' ').trim() || 'Value';
+}
+
+// Put focus where a control used to be when the tap replaced that control with something else.
+// `restoreFocus` re-finds the element that was focused, so it cannot help once that element no
+// longer exists: focus falls to the body, which drops a screen-reader user at the top of the page.
+// Deferred by a tick so render() has rebuilt the view and the new target exists.
+function focusAfterRender(selector) {
+  setTimeout(() => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    el.setAttribute('tabindex', '-1');
+    el.focus({ preventScroll: true });
+  }, 0);
+}
+
 // ---------- actions ----------
 
 function parseValue(v) {
@@ -128,7 +165,11 @@ const actions = {
   'setup-health': (v) => { const a = ctx.setup.health.conditions; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); },
   'setup-tx': (v) => { const a = ctx.setup.health.treatments; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); },
   'setup-back': () => { ctx.setup.step = Math.max(0, ctx.setup.step - 1); window.scrollTo(0, 0); },
-  'setup-stools': (_, el) => { ctx.setup.normalStools = Math.max(0, ctx.setup.normalStools + Number(el.dataset.delta)); },
+  'setup-stools': (_, el) => {
+    const label = stepperLabel(el);
+    ctx.setup.normalStools = Math.max(0, ctx.setup.normalStools + Number(el.dataset.delta));
+    announce(`${label}: ${ctx.setup.normalStools}`);
+  },
   'setup-finish': () => {
     const s = ctx.setup;
     const settings = { condition: s.condition, normalStools: s.normalStools, startDate: s.startDate, createdAt: new Date().toISOString() };
@@ -189,7 +230,9 @@ const actions = {
     const f = el.dataset.field;
     const d = Number(el.dataset.delta);
     const cur = ctx.draft[f];
+    const label = stepperLabel(el);
     ctx.draft[f] = cur == null ? (d < 0 ? 0 : 1) : Math.max(0, cur + d);
+    announce(`${label}: ${ctx.draft[f]}`);
   },
   'set-med': (v) => {
     ctx.draft.med.change = v;
@@ -219,6 +262,9 @@ const actions = {
     delete ctx.drafts[d];
     commit();
     toast('Marked as a rough day. Take care of yourself.');
+    // The note that replaces the button is the right place to land: it states what happened and
+    // holds the Undo.
+    focusAfterRender('.rough-note');
   },
   'catchup-log': () => { ctx.viewDate = addDays(store.today(state), -1); window.scrollTo(0, 0); },
   'catchup-rough': () => {
@@ -234,6 +280,8 @@ const actions = {
     state.entries[d] = { ...state.entries[d], rough: false };
     delete ctx.drafts[d];
     commit();
+    // Undo removes itself, so land back on the button it restores.
+    focusAfterRender('.rough-btn');
   },
   'catchup-skip': () => {
     state.catchupSkipped = [...(state.catchupSkipped || []), addDays(store.today(state), -1)];
@@ -248,7 +296,13 @@ const actions = {
     state.settings.baselineExtendDismissed = true;
     commit();
   },
-  'date-shift': (_, el) => { ctx.viewDate = addDays(ctx.viewDate, Number(el.dataset.delta)); ctx.weeklyDraft = { items: [] }; },
+  // Same silence as the stepper: the arrows change which day you are looking at, and the only sign
+  // of it is a label you have to see. Read the finished label rather than reformatting the date.
+  'date-shift': (_, el) => {
+    ctx.viewDate = addDays(ctx.viewDate, Number(el.dataset.delta));
+    ctx.weeklyDraft = { items: [] };
+    announce(() => document.querySelector('.date-label')?.textContent.replace(/\s+/g, ' ').trim() || '');
+  },
   'open-day': (v) => { ctx.viewDate = v; location.hash = '#today'; },
   'weekly-toggle': (v) => {
     const a = ctx.weeklyDraft.items;
@@ -452,10 +506,24 @@ document.addEventListener('click', (e) => {
   if (m) { m.setAttribute('tabindex', '-1'); m.focus(); }
 });
 
+// A new view replaces the old one inside the same page, so there is no page load for a screen
+// reader to announce. `restoreFocus` cannot help here: it re-finds the control that was focused,
+// and the tabs are plain links carrying no `data-action`, so focus falls to the body. Scrolling
+// moves the screen but not the reader's cursor, which leaves a VoiceOver user hearing nothing at
+// all after tapping a tab and swiping back through the header to find out whether it worked.
+// Moving focus to the new view's heading makes the reader speak the view it just opened.
+function focusViewHeading() {
+  const h = document.querySelector('#main h1');
+  if (!h) return;
+  h.setAttribute('tabindex', '-1');
+  h.focus({ preventScroll: true });
+}
+
 window.addEventListener('hashchange', () => {
   if (handleShortcut()) return;
   render();
   window.scrollTo(0, 0);
+  focusViewHeading();
 });
 
 if (!handleShortcut()) render();

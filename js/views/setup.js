@@ -22,8 +22,15 @@ export function renderSetup(ctx) {
   const steps = ['Condition', 'Your health', 'Details', 'Safety', 'Your plan'];
   const h = s.health || { conditions: [], treatments: [], dxYear: '' };
   const has = (c) => h.conditions.includes(c);
-  const progress = `<ol class="steps" aria-label="Setup steps">${steps.map((label, i) =>
-    `<li class="${i === s.step ? 'is-current' : i < s.step ? 'is-done' : ''}">${esc(label)}</li>`).join('')}</ol>`;
+  // Which step you are on was carried by the class alone, so a screen reader read five plain items
+  // with no sign of where you were: the progress indicator existed only for people who could see
+  // it. `aria-current` names the current step, and a finished one says so in text that is read but
+  // not shown. The remaining steps are left bare, since "not started" on three items is noise.
+  const progress = `<ol class="steps" aria-label="Setup steps">${steps.map((label, i) => {
+    const current = i === s.step;
+    const done = i < s.step;
+    return `<li class="${current ? 'is-current' : done ? 'is-done' : ''}"${current ? ' aria-current="step"' : ''}>${esc(label)}${done ? '<span class="sr-only">, completed</span>' : ''}</li>`;
+  }).join('')}</ol>`;
 
   let body = '';
   if (s.step === 0) {

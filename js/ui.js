@@ -41,12 +41,22 @@ export function pct(x) {
   return x == null ? '—' : `${Math.round(x * 100)}%`;
 }
 
+// An option's visible label is short by design, so its meaning often lives in `title` - and iOS
+// VoiceOver does not speak `title` on a button. Heard alone, "Streaks" and "Obvious" are two bare
+// words with no boundary between them, when what separates them is "less than half the time" and
+// "most of the time": a blind user would score the wrong rung of a scale that feeds the symptom
+// score. Fold the description into the accessible name, and leave `title` for pointer hover.
+function describedName(label, desc) {
+  const d = String(desc ?? '').trim();
+  return d && d !== label ? ` aria-label="${esc(`${label} — ${d}`)}"` : '';
+}
+
 // A row of single-choice tap buttons. `value` null means "not answered".
 export function choiceRow({ field, legend, options, value, hint = '' }) {
   const buttons = options.map((o) => {
     const pressed = value === o.value;
     return `<button type="button" class="choice${pressed ? ' is-on' : ''}" aria-pressed="${pressed}"
-      data-action="set" data-field="${field}" data-value="${o.value}" title="${esc(o.title || o.label)}">${esc(o.label)}</button>`;
+      data-action="set" data-field="${field}" data-value="${o.value}" title="${esc(o.title || o.label)}"${describedName(o.label, o.title)}>${esc(o.label)}</button>`;
   }).join('');
   return `<fieldset class="field">
     <legend>${esc(legend)}${value == null ? ' <span class="unanswered">not answered</span>' : ''}</legend>
@@ -59,7 +69,7 @@ export function chipGroup({ field, legend, options, values = [], hint = '' }) {
   const chips = options.map((o) => {
     const on = values.includes(o.value);
     return `<button type="button" class="chip${on ? ' is-on' : ''}" aria-pressed="${on}"
-      data-action="toggle" data-field="${field}" data-value="${o.value}" title="${esc(o.title || '')}">${esc(o.label)}</button>`;
+      data-action="toggle" data-field="${field}" data-value="${o.value}" title="${esc(o.title || '')}"${describedName(o.label, o.title)}>${esc(o.label)}</button>`;
   }).join('');
   return `<fieldset class="field">
     <legend>${esc(legend)}</legend>
